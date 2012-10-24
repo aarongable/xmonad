@@ -40,6 +40,7 @@ import XMonad.Actions.Submap
 
 main = xmonad gnomeConfig
       { terminal = "gnome-terminal"
+      , focusFollowsMouse = False
       , normalBorderColor  = myInactiveBorderColor
       , focusedBorderColor = myActiveBorderColor
       , layoutHook = myLayoutHook
@@ -49,7 +50,8 @@ main = xmonad gnomeConfig
 
 -- Layouts
 myLayoutHook = desktopLayoutModifiers
-    ( ResizableTall 1 (3/100) (1/2) [] ||| ThreeCol 1 (3/100) (1/3) ||| spiral (1) ||| simpleTabbed )
+    ( two ||| Mirror two ||| ThreeCol 1 (3/100) (1/3) ||| spiral (1) ||| simpleTabbed )
+        where two = ResizableTall 1 (3/100) (1/2) []
 
 -- Colors
 myFgColor = "grey60"
