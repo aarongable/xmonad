@@ -1,0 +1,6 @@
+dist
+cabal-dev
+*.o
+*.hi
+xmonad-x86_64-linux
+xmonad.errors
