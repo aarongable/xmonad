@@ -1,4 +1,4 @@
-import XMonad
+import XMonad hiding ((|||))
 import XMonad.Core
 
 import XMonad.Util.EZConfig
@@ -14,7 +14,8 @@ import System.Exit
 import System.IO
 import Data.Monoid
 
-import XMonad.Layout
+import XMonad.Layout hiding ( (|||) )
+import XMonad.Layout.LayoutCombinators
 import XMonad.Layout.ResizableTile
 import XMonad.Layout.WindowNavigation
 import XMonad.Layout.ThreeColumns
@@ -122,7 +123,7 @@ myKeys = \conf -> mkKeymap conf $
 --Layout Management
         ++
         [ ("M-<Space>",         sendMessage NextLayout)
-        , ("M-S-<Space>",       setLayout $ XMonad.layoutHook conf)
+        , ("M-S-<Space>",       sendMessage FirstLayout)
 
         , ("M--",               sendMessage (IncMasterN (-1)))
         , ("M-=",               sendMessage (IncMasterN 1))
