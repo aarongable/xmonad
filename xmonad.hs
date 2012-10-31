@@ -1,50 +1,44 @@
 import XMonad hiding ((|||))
-import XMonad.Core
 
-import XMonad.Util.EZConfig
-import XMonad.Util.Run
-import XMonad.Config.Gnome
+-- Tools to get Gnome integration
 import XMonad.Config.Desktop
+import XMonad.Config.Gnome
+import XMonad.Hooks.ManageDocks
 
-import Graphics.X11.Xlib
-import qualified Data.Map as M
+-- Utils
 import qualified XMonad.StackSet as W
-import Data.Bits ((.|.))
+import XMonad.Util.EZConfig
 import System.Exit
 import System.IO
-import Data.Monoid
 
+-- Imports for various layouts
 import XMonad.Layout hiding ((|||))
 import XMonad.Layout.LayoutCombinators
 import XMonad.Layout.ResizableTile
 import XMonad.Layout.ThreeColumns
 import XMonad.Layout.Spiral
 import XMonad.Layout.Tabbed
---import XMonad.Layout.SimpleFloat
---import XMonad.Layout.Grid
---import XMonad.Layout.Spacing
---import XMonad.Layout.NoBorders
+  --import XMonad.Layout.SimpleFloat
+  --import XMonad.Layout.Grid
+  --import XMonad.Layout.Spacing
+  --import XMonad.Layout.NoBorders
 import XMonad.Layout.WindowNavigation
 
-import XMonad.Hooks.ManageDocks
---import XMonad.Hooks.EwmhDesktops
---import XMonad.Hooks.DynamicLog
---import XMonad.Hooks.FadeInactive
---import XMonad.Hooks.UrgencyHook
---import XMonad.Hooks.SetWMName
-
 import XMonad.Actions.CycleWS
-import XMonad.Actions.SwapWorkspaces
 import XMonad.Actions.Submap
 
+-- TODO(aarongable):
+-- Use LayoutCombinators to add jump-to-layout shortcuts
+-- Use Submap for more intuitive and sometimes vimlike keys
+-- Use CycleWS for moving between monitors
 
-main = xmonad gnomeConfig
+main = xmonad $ gnomeConfig
   { terminal            = "gnome-terminal"
   , modMask             = mod4Mask
   , focusFollowsMouse   = False
   , workspaces          = myWorkspaces
   , layoutHook          = myLayoutHook
-  , manageHook          = myManageHook <+> manageHook defaultConfig
+  , manageHook          = myManageHook <+> manageHook gnomeConfig
   , keys                = myKeys
   , normalBorderColor   = myInactiveBorderColor
   , focusedBorderColor  = myActiveBorderColor
@@ -57,7 +51,8 @@ myWorkspaces = map show [1..9] ++ ["0"]
 
 -- Layouts
 -- windowNavigation for M-[hjkl] movement
--- desktopLayoutModifiers for proper bar/panel tiling
+-- desktopLayoutModifiers for proper bar/panel tiling,
+--    necessary because I override the default gnomeConfig layoutHook
 myLayoutHook = windowNavigation $ desktopLayoutModifiers
   ( two ||| Mirror two ||| ThreeCol 1 (3/100) (1/3) ||| spiral (1) ||| simpleTabbed )
     where two = ResizableTall 1 (3/100) (1/2) []
@@ -89,7 +84,7 @@ myKeys = \conf -> mkKeymap conf $
   --Drop floating window back into tiling
   , ("M-t",             withFocused $ windows . W.sink)
 
-  --kill window
+  --Kill window
   , ("M-q",             kill)
   ]
 
@@ -103,11 +98,19 @@ myKeys = \conf -> mkKeymap conf $
   ]
 
   --Shift monitors
-  -- mod-{u,i,o}, Switch to physical/Xinerama screens 1, 2, 3
-  -- mod-shift-{u,i,o}, Move client to screen 1, 2, 3
+  -- mod-{y,o}, Switch to physical/Xinerama screens 1, 2
+  -- mod-shift-{y,o}, Move client to screen 1, 2
   ++
   [ (m ++ key, screenWorkspace sc >>= flip whenJust (windows . f))
-  | (key, sc) <- zip ["u", "i", "o"] [0..]
+  | (key, sc) <- zip ["y", "o"] [0..]
+  , (m, f) <- [("M-", W.view), ("M-S-", W.shift)]
+  ]
+  --Shift monitors
+  -- mod-{u,i}, Switch to physical/Xinerama screens 1, 2
+  -- mod-shift-{u,i}, Move client to screen 1, 2
+  ++
+  [ (m ++ key, screenWorkspace sc >>= flip whenJust (windows . f))
+  | (key, sc) <- zip ["u", "i"] [0..]
   , (m, f) <- [("M-", W.view), ("M-S-", W.shift)]
   ]
 
@@ -129,6 +132,7 @@ myKeys = \conf -> mkKeymap conf $
   --Applications
   ++
   [ ("M-<Return>",        spawn $ XMonad.terminal conf)
+                                  -- colors chosen to match ubuntu
   , ("M-S-<Return>",      spawn $ "dmenu_run -nb '#2C001E' -nf '#AEA79F'"
                                         ++ " -sb '#AEA79F' -sf '#2C001E'"
                                         ++ " -l 4 -m 1")
@@ -143,21 +147,5 @@ myKeys = \conf -> mkKeymap conf $
 
 
 -- Colors
-myFgColor = "grey60"
-myBgColor = "black"
-myHighlightedFgColor = "white"
-
 myActiveBorderColor = "red"
-myInactiveBorderColor = "grey60"
-
-myCurrentWsFgColor = "yellow"
-myUrgentWsFgColor = "purple"
-
-myLayoutFgColor = "yellow"
-
-mySeparatorFgColor = "red"
-
-myUrgencyHintFgColor = "purple"
-myUrgencyHintBgColor = "yellow"
-
-
+myInactiveBorderColor = "black"
