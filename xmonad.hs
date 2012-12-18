@@ -1,7 +1,11 @@
-import XMonad hiding ((|||))
+{-# LANGUAGE DeriveDataTypeable #-}
 
+-- | Imports
+import XMonad hiding ((|||))
+import qualified Data.List as L
+import qualified Data.Map as Map
+import qualified Data.Maybe as M
 -- Tools to get Gnome integration
-import XMonad.Config.Desktop
 import XMonad.Config.Gnome
 import XMonad.Hooks.ManageDocks
 
@@ -24,16 +28,21 @@ import XMonad.Layout.Tabbed
   --import XMonad.Layout.NoBorders
 import XMonad.Layout.WindowNavigation
 
+-- For special extensions and TODOs
+import qualified XMonad.Util.ExtensibleState as XS
+import XMonad.Actions.OnScreen
 import XMonad.Actions.CycleWS
 import XMonad.Actions.Submap
 
 -- TODO(aarongable):
 -- Use LayoutCombinators to add jump-to-layout shortcuts
 -- Use Submap for more intuitive and sometimes vimlike keys
--- Use CycleWS for moving between monitors
+-- Set a good startupHook
 
+
+-- | Main config
 main = xmonad $ gnomeConfig
-  { terminal            = "gnome-terminal"
+  { terminal            = myTerminal
   , modMask             = mod4Mask
   , focusFollowsMouse   = False
   , workspaces          = myWorkspaces
@@ -45,107 +54,144 @@ main = xmonad $ gnomeConfig
   }
 
 
--- Workspaces
-myWorkspaces = map show [1..9] ++ ["0"]
+-- | Terminal
+myTerminal = "gnome-terminal"
 
 
--- Layouts
+-- | Workspaces
+myWorkspaces = nums ++ map ("F"++) nums
+    where nums = map show [1..10]
+-- workspace switching keys
+myWsKeys = myNumKeys ++ myFunKeys
+myNumKeys = map show [1..9] ++ ["0"]
+myFunKeys = map (\n -> "<F"++n++">") (map show [1..10])
+
+
+-- | Layouts
 -- windowNavigation for M-[hjkl] movement
--- desktopLayoutModifiers for proper bar/panel tiling,
---    necessary because I override the default gnomeConfig layoutHook
-myLayoutHook = windowNavigation $ desktopLayoutModifiers
+-- avoidStrutsOn [] to get toggleStruts, but hiding panels by default
+myLayoutHook = windowNavigation $ avoidStrutsOn []
   ( two ||| Mirror two ||| ThreeCol 1 (3/100) (1/3) ||| spiral (1) ||| simpleTabbed )
     where two = ResizableTall 1 (3/100) (1/2) []
 
 
--- Management
+-- | Management
 myManageHook = composeAll
     [ className =? "Xmessage" --> doFloat
     , manageDocks
     ]
 
 
--- Keys
+-- | Keyboard shortcuts
 myKeys = \conf -> mkKeymap conf $
-  --Window Navigation
+  -- Window Navigation
   [ ("M-h",             sendMessage $ Go L)
   , ("M-j",             sendMessage $ Go D)
   , ("M-k",             sendMessage $ Go U)
   , ("M-l",             sendMessage $ Go R)
   , ("M-m",             windows W.focusMaster)
 
-  --Window Movement
+  -- Window Movement
   , ("M-S-h",           sendMessage $ Swap L)
   , ("M-S-j",           sendMessage $ Swap D)
   , ("M-S-k",           sendMessage $ Swap U)
   , ("M-S-l",           sendMessage $ Swap R)
   , ("M-S-m",           windows W.swapMaster)
 
-  --Drop floating window back into tiling
+  -- Drop floating window back into tiling
   , ("M-t",             withFocused $ windows . W.sink)
 
-  --Kill window
+  -- Kill window
   , ("M-q",             kill)
   ]
 
-  --Shift workspaces
-  -- mod-[1..0], Switch to workspace N
-  -- mod-shift-[1..0], Move client to workspace N
+  -- Layout Management
   ++
-  [ (m ++ i, windows $ f j)
-  | (i, j) <- zip (myWorkspaces) (XMonad.workspaces conf)
-  , (m, f) <- [("M-", W.view), ("M-S-", W.shift)] --Shift wndw to ws
+  [ ("M-<Space>",       sendMessage NextLayout)
+  , ("M-S-<Space>",     sendMessage FirstLayout)
+
+  , ("M--",             sendMessage (IncMasterN (-1)))
+  , ("M-=",             sendMessage (IncMasterN 1))
+
+  , ("M-S--",           sendMessage Shrink)
+  , ("M-S-=",           sendMessage Expand)
+
+  , ("M-b",             sendMessage ToggleStruts)
+
+  , ("M-<Scroll_lock>", XS.modify wsTogglePairState)
   ]
 
-  --Shift monitors
-  -- mod-{y,o}, Switch to physical/Xinerama screens 1, 2
-  -- mod-shift-{y,o}, Move client to screen 1, 2
+  -- Applications
   ++
-  [ (m ++ key, screenWorkspace sc >>= flip whenJust (windows . f))
-  | (key, sc) <- zip ["y", "o"] [0..]
-  , (m, f) <- [("M-", W.view), ("M-S-", W.shift)]
-  ]
-  --Shift monitors
-  -- mod-{u,i}, Switch to physical/Xinerama screens 1, 2
-  -- mod-shift-{u,i}, Move client to screen 1, 2
-  ++
-  [ (m ++ key, screenWorkspace sc >>= flip whenJust (windows . f))
-  | (key, sc) <- zip ["u", "i"] [0..]
-  , (m, f) <- [("M-", W.view), ("M-S-", W.shift)]
-  ]
-
-  --Layout Management
-  ++
-  [ ("M-<Space>",         sendMessage NextLayout)
-  , ("M-S-<Space>",       sendMessage FirstLayout)
-
-  , ("M--",               sendMessage (IncMasterN (-1)))
-  , ("M-=",               sendMessage (IncMasterN 1))
-
-  --Shrink/expand
-  , ("M-S--",             sendMessage Shrink)
-  , ("M-S-=",             sendMessage Expand)
-
-  , ("M-b",               sendMessage ToggleStruts)
-  ]
-
-  --Applications
-  ++
-  [ ("M-<Return>",        spawn $ XMonad.terminal conf)
-                                  -- colors chosen to match ubuntu
-  , ("M-S-<Return>",      spawn $ "dmenu_run -nb '#2C001E' -nf '#AEA79F'"
+  [ ("M-<Return>",      spawn $ XMonad.terminal conf)
+                                -- colors chosen to match Ubuntu 12.04
+  , ("M-S-<Return>",    spawn $ "dmenu_run -nb '#2C001E' -nf '#AEA79F'"
                                         ++ " -sb '#AEA79F' -sf '#2C001E'"
                                         ++ " -l 4 -m 1")
   ]
 
-  --XMonad system
+  -- XMonad system
   ++
-  [ ("M-C-<Esc>",         spawn $ "xkill")
-  , ("M-S-q",             io (exitWith ExitSuccess))
-  , ("M-S-r",             spawn "xmonad --recompile; xmonad --restart")
+  [ ("M-C-<Esc>",       spawn $ "xkill")
+  , ("M-S-q",           io (exitWith ExitSuccess))
+  , ("M-S-r",           spawn "xmonad --recompile; xmonad --restart")
+  ]
+
+  -- Shift monitors
+    -- mod-{y/u,o/i}: Switch to physical/Xinerama screens 1, 2
+    -- mod-shift-{y/u,o/i}: Move window to screen 1, 2
+  ++
+  [ (m ++ key, screenWorkspace sc >>= flip whenJust (windows . f))
+  | (key, sc) <- zip ["y", "u", "o", "i"] [0, 0, 1, 1]
+  , (m, f) <- [("M-", W.view), ("M-S-", W.shift)]
+  ]
+  -- alt-tab for monitors and workspaces, via CycleWS
+  ++
+  [ ("M-<Tab>",         nextScreen)
+  , ("M-S-<Tab>",       shiftNextScreen >> nextScreen)
+  , ("M-`",             toggleWS)
+  ]
+
+  -- Unified workspace shifting
+  ++
+  [ (m ++ k,            f k)
+  | k <- myWsKeys
+  , (m, f) <- [("M-", myViewer), ("M-S-", myShifter)]
   ]
 
 
--- Colors
+-- | Colors
 myActiveBorderColor = "red"
 myInactiveBorderColor = "black"
+
+
+-- | Helper functions
+-- let bools be stored in persistent storage
+data WsPairState = WsPairState Bool deriving (Typeable, Read, Show)
+instance ExtensionClass WsPairState where
+  initialValue  = WsPairState False
+  extensionType = PersistentExtension
+
+-- toggle the state of the stored bool
+wsTogglePairState (WsPairState s) = WsPairState $ not s
+
+-- The core of the workspace switching
+-- * if the pair state is false, just do normal views
+-- * if the pair state is true, do paired workspace switching
+myViewer k = do
+  WsPairState s <- XS.get
+  case s of
+    False -> windows $ W.view (keyWs k)
+    True  -> windows (viewOnScreen 0 (numKeyWs k)) >> windows (viewOnScreen 1 (funKeyWs k))
+
+myShifter k = windows $ W.shift (keyWs k)
+
+-- Maps input keys to corresponding workspaces
+keyWs k = snd . head $ filter ((==k) . fst) myWsMap
+  where
+    myWsMap = zip myWsKeys myWorkspaces
+-- Maps input keys to corresponding number or function workspaces
+numKeyWs k = keyWs $ myNumKeys !! modIndex k
+funKeyWs k = keyWs $ myFunKeys !! modIndex k
+modIndex k = M.fromJust (L.elemIndex k myWsKeys) `mod` 10 
+
