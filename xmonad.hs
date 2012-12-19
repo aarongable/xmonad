@@ -2,12 +2,10 @@
 
 -- | Imports
 import XMonad hiding ((|||))
+
+-- Basic data types
 import qualified Data.List as L
-import qualified Data.Map as Map
 import qualified Data.Maybe as M
--- Tools to get Gnome integration
-import XMonad.Config.Gnome
-import XMonad.Hooks.ManageDocks
 
 -- Utils
 import qualified XMonad.StackSet as W
@@ -22,32 +20,35 @@ import XMonad.Layout.ResizableTile
 import XMonad.Layout.ThreeColumns
 import XMonad.Layout.Spiral
 import XMonad.Layout.Tabbed
-  --import XMonad.Layout.SimpleFloat
-  --import XMonad.Layout.Grid
-  --import XMonad.Layout.Spacing
-  --import XMonad.Layout.NoBorders
 import XMonad.Layout.WindowNavigation
 
+-- Imports for desktop management
+import XMonad.Hooks.ManageDocks
+
 -- For special extensions and TODOs
+-- * for storing state, specifically the screen pairing boolean
 import qualified XMonad.Util.ExtensibleState as XS
+-- * for executing actions on both screens without changing focus
 import XMonad.Actions.OnScreen
+-- * for alt-tab functionality between screens and workspaces
 import XMonad.Actions.CycleWS
-import XMonad.Actions.Submap
+
 
 -- TODO(aarongable):
 -- Use LayoutCombinators to add jump-to-layout shortcuts
 -- Use Submap for more intuitive and sometimes vimlike keys
+-- Set workspace-specific layouts
 -- Set a good startupHook
 
 
 -- | Main config
-main = xmonad $ gnomeConfig
+main = xmonad $ defaultConfig
   { terminal            = myTerminal
   , modMask             = mod4Mask
   , focusFollowsMouse   = False
   , workspaces          = myWorkspaces
   , layoutHook          = myLayoutHook
-  , manageHook          = myManageHook <+> manageHook gnomeConfig
+  , manageHook          = myManageHook
   , keys                = myKeys
   , normalBorderColor   = myInactiveBorderColor
   , focusedBorderColor  = myActiveBorderColor
@@ -182,7 +183,7 @@ myViewer k = do
   WsPairState s <- XS.get
   case s of
     False -> windows $ W.view (keyWs k)
-    True  -> windows (viewOnScreen 0 (numKeyWs k)) >> windows (viewOnScreen 1 (funKeyWs k))
+    True  -> windows (onlyOnScreen 0 (numKeyWs k)) >> windows (onlyOnScreen 1 (funKeyWs k))
 
 myShifter k = windows $ W.shift (keyWs k)
 
